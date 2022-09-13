@@ -1,0 +1,56 @@
+/abolish
+/multiline on
+
+/p datos.ra
+
+-- Vista1: Empleados que son programadores y analistas
+vista1 := project dni (programadores njoin analistas);
+-- Vista 2: Horas totales de cada empleado
+empleados := programadores union analistas;
+no_asignados := project dni (empleados) difference project dniemp (distribución);
+vista2(dni, horas) := (group_by [dniemp] dniemp,sum(horas) as total true (distribución)) union (project dni,0 (no_asignados));
+-- Vista 3:
+vista3(dni, nombre, proyecto) := project dni,nombre,códigopr (empleados ljoin dni=dniemp distribución);
+-- Vista 4:
+vista4(dni, nombre) :=  project dni,nombre (select (teléfono is null) (empleados));
+-- Vista 5: 
+mediaHoras(media) := group_by [] avg(horas) true (rename p(horas) (group_by [códigopr] avg(horas) true (distribución)));
+vista5(dni, número) := group_by dniemp,media dniemp,avg(horas) avg(horas)<avg(media) (distribución product mediaHoras);
+-- Vista 6: Horas ampliadas en un 20%
+proyectosEvaristo := project códigopr (empleados zjoin (dni=dniemp and nombre='Evaristo') distribución);
+empleadosProyectosEvaristo := project dniemp (distribución njoin proyectosEvaristo);
+empleadosNoEnProyectosEvaristo(dniemp) := project dni (empleados) difference empleadosProyectosEvaristo;
+vista6(dni, códigopr, horas) := project dniemp,códigopr,horas*1.2 (distribución njoin empleadosNoEnProyectosEvaristo);
+-- Vista 7: División
+empleados   := programadores union analistas;
+proyempl(códigopr,dniemp) := project códigopr,dniemp (distribución);
+dniEvaristo := project dni (select nombre='Evaristo' (empleados));
+vista7(dni) := project dniemp (proyempl division proyectosEvaristo) difference dniEvaristo;
+-- Vista 8: División
+-- alfa=proyempl
+-- beta=proyectosEvaristo
+-- A=códigopr,dniemp
+-- B=códigopr
+-- A-B=dniemp
+todos(dniemp) := project dniemp (proyempl);
+menos(dniemp) := project dniemp ((proyectosEvaristo product todos) difference proyempl);
+vista8(dni) := (todos difference menos) difference dniEvaristo;
+-- Vista 9: Recursión
+jefeDirecto(dir,emp) := project dnidir,dniemp (proyectos zjoin código=códigopr distribución);
+jefe(dir,emp) := 
+  jefeDirecto
+   union 
+  (project jefeDirecto.dir,jefe.emp (jefeDirecto zjoin jefeDirecto.emp=jefe.dir jefe));
+vista9(dni) := project emp (jefe zjoin dir=dni and emp<>dir and nombre='Evaristo' empleados);
+
+-- Consultas sobre las vistas:
+select true (vista1);
+select true (vista2);
+select true (vista3);
+select true (vista4);
+select true (vista5);
+select true (vista6);
+select true (vista7);
+select true (vista8);
+select true (vista9);
+ 
